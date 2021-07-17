@@ -8,4 +8,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+Welcome to my research website. The basic results are as follows:
+
+1. [Graph Visulization](graph_display.html).
