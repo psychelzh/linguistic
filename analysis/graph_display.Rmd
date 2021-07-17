@@ -1,0 +1,35 @@
+---
+title: "Visualize Graphs"
+author: "Liang Zhang"
+date: "2021-07-09"
+output: workflowr::wflow_html
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggraph)
+library(patchwork)
+knitr::opts_knit$set(root.dir = here::here())
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+```{r load-data, include=FALSE}
+targets::tar_load(graphs)
+targets::tar_load(file_child_viz_graph)
+```
+
+Here we visualize the continuous graphs of each time point for each subject and each type of response form.
+
+```{r render-content, results='asis'}
+users <- unique(graphs$SID)
+for (user in users) {
+  knitr::knit(
+    text = knitr::knit_expand(file_child_viz_graph),
+    quiet = TRUE
+  ) |> 
+    cat()
+  cat("\n\n")
+}
+```
