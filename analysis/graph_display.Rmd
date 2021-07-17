@@ -22,14 +22,11 @@ targets::tar_load(file_child_viz_graph)
 
 Here we visualize the continuous graphs of each time point for each subject and each type of response form.
 
-```{r render-content, results='asis'}
-users <- unique(graphs$SID)
-for (user in users) {
-  knitr::knit(
-    text = knitr::knit_expand(file_child_viz_graph),
-    quiet = TRUE
-  ) |> 
-    cat()
-  cat("\n\n")
-}
+```{r render-content, include=FALSE}
+src <- purrr::map_chr(
+  sort(unique(graphs$SID)),
+  ~ knitr::knit_expand(file_child_viz_graph, user = .x)
+)
 ```
+
+`r knitr::knit(text = src)`
