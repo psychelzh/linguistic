@@ -1,0 +1,81 @@
+---
+title: "Visualize Graphs"
+author: "Liang Zhang"
+date: "2021-07-09"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidygraph)
+library(ggraph)
+library(patchwork)
+library(lmerTest)
+library(emmeans)
+knitr::opts_knit$set(root.dir = here::here())
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+```{r load-data, include=FALSE}
+targets::tar_load(graphs)
+targets::tar_load(file_child_viz_graph)
+```
+
+# Visualize
+
+Here we visualize the continuous graphs of each time point for each subject and each type of response form.
+
+```{r render-content}
+src <- purrr::map_chr(
+  sort(unique(graphs$SID)),
+  ~ knitr::knit_expand(file_child_viz_graph, user = .x)
+)
+```
+
+`r knitr::knit(text = str_c(src, collapse = "\n\n"))`
+
+# Dynamic
+
+```{r plot-single, fig.width=8, fig.height=6}
+data <- graphs |> 
+  mutate(
+    Time = factor(Time),
+    type = factor(type, c("o", "w"), c("Oral", "Written")),
+    map_df(
+      graph,
+      ~ .x |> 
+        activate(nodes) |> 
+        mutate(strength = centrality_degree(weights = 1 / distance)) |> 
+        as_tibble() |> 
+        summarise(mean_strength = mean(strength))
+    )
+  )
+ggplot(data, aes(Time, mean_strength, color = type)) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
+  scale_color_brewer(palette = "Paired") +
+  facet_wrap(~ SID, labeller = "label_both") +
+  labs(y = "Mean Strength", color = "Response") +
+  ggpubr::theme_pubr()
+```
+
+```{r plot-stats, fig.width=8, fig.height=6}
+mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
+emmeans(mdl_fitted, ~ Time * type) |> 
+  broom::tidy() |> 
+  ggplot(aes(
+    Time, estimate, 
+    ymin = estimate - std.error, ymax = estimate + std.error,
+    color = type
+  )) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  geom_errorbar(width = 0, position = position_dodge(width = 0.2)) +
+  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
+  scale_color_brewer(palette = "Paired") +
+  labs(y = "Mean Strength", color = "Response") +
+  ggpubr::theme_pubr()
+```

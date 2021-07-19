@@ -1,6 +1,6 @@
-# {{user}}
+## {{user}}
 
-## Written Form
+### Written Form
 
 ```{r visualize-written-{{user}}, fig.width=12, fig.height=8}
 graphs |>
@@ -20,7 +20,7 @@ graphs |>
   plot_annotation(tag_levels = "1", tag_prefix = "Time: ")
 ```
 
-## Oral Form
+### Oral Form
 
 ```{r visualize-oral-{{user}}, fig.width=12, fig.height=8}
 graphs |>

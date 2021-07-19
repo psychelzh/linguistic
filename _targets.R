@@ -13,5 +13,10 @@ list(
   ),
   tar_target(data_clean, wrangle_data(data)),
   tar_target(graphs, create_graph(data_clean)),
-  tar_file(file_child_viz_graph, "archetypes/child_vis_graph.Rmd")
+  tar_file(file_child_viz_graph, "archetypes/child_vis_graph.Rmd"),
+  tar_render(
+    output_analysis_notes,
+    "analysis/notes.Rmd",
+    output_dir = "output"
+  )
 )
