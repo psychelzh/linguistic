@@ -2,7 +2,7 @@
 title: "Visualize Graphs"
 author: "Liang Zhang"
 date: "2021-07-09"
-output: 
+output:
   html_document:
     code_folding: hide
     toc: true
@@ -41,16 +41,16 @@ src <- purrr::map_chr(
 # Dynamic
 
 ```{r plot-single, fig.width=8, fig.height=6}
-data <- graphs |> 
+data <- graphs |>
   mutate(
     Time = factor(Time),
     type = factor(type, c("o", "w"), c("Oral", "Written")),
     map_df(
       graph,
-      ~ .x |> 
-        activate(nodes) |> 
-        mutate(strength = centrality_degree(weights = 1 / distance)) |> 
-        as_tibble() |> 
+      ~ .x |>
+        activate(nodes) |>
+        mutate(strength = centrality_degree(weights = 1 / distance)) |>
+        as_tibble() |>
         summarise(mean_strength = mean(strength))
     )
   )
@@ -65,10 +65,10 @@ ggplot(data, aes(Time, mean_strength, color = type)) +
 
 ```{r plot-stats, fig.width=8, fig.height=6}
 mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
-emmeans(mdl_fitted, ~ Time * type) |> 
-  broom::tidy() |> 
+emmeans(mdl_fitted, ~ Time * type) |>
+  broom::tidy() |>
   ggplot(aes(
-    Time, estimate, 
+    Time, estimate,
     ymin = estimate - std.error, ymax = estimate + std.error,
     color = type
   )) +
@@ -78,4 +78,39 @@ emmeans(mdl_fitted, ~ Time * type) |>
   scale_color_brewer(palette = "Paired") +
   labs(y = "Mean Strength", color = "Response") +
   ggpubr::theme_pubr()
+```
+
+# Statistical Results
+
+## ANOVA Table
+
+```{r anova}
+anova(mdl_fitted) |>
+  broom::tidy() |>
+  mutate(
+    `F` = sprintf("F(%.0f, %.0f) = %.2f", NumDF, DenDF, statistic),
+    .before = p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt() |>
+  gt::fmt_number(ends_with("sq"))
+```
+
+## Simple Effect of Response Type
+
+```{r simple-effect}
+emmeans(mdl_fitted, ~ Time*type) |>
+  contrast(method = "pairwise", simple = "type") |>
+  broom::tidy() |>
+  select(-null.value, -estimate, -std.error) |>
+  mutate(
+    t = sprintf("t(%.0f) = %.2f", df, statistic),
+    .before = p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt()
 ```
