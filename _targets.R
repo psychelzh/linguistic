@@ -28,5 +28,13 @@ list(
       writexl::write_xlsx(distances_mean, file)
       file
     }
+  ),
+  tar_file(
+    file_data_graph_individual, {
+      file <- "output/data_graph_individual.xlsx"
+      split(distances, distances$SID) |>
+        writexl::write_xlsx(file)
+      file
+    }
   )
 )
