@@ -53,8 +53,22 @@ src <- purrr::map_chr(
 
 This is the mean of all graphs.
 
-```{r graph-mean, fig.width=12, fig.height=8}
+### Written Form
+
+```{r graph-mean-written, fig.width=12, fig.height=8}
 graph_mean |>
+  filter(type == "w") |>
+  mutate(plot = map(graph, vis_graph)) |>
+  pull(plot) |>
+  wrap_plots() +
+  plot_annotation(tag_levels = "1", tag_prefix = "Time: ")
+```
+
+### Oral Form
+
+```{r graph-mean-oral, fig.width=12, fig.height=8}
+graph_mean |>
+  filter(type == "o") |>
   mutate(plot = map(graph, vis_graph)) |>
   pull(plot) |>
   wrap_plots() +
