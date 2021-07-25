@@ -1,5 +1,3 @@
 # linguistic
 
-A [workflowr][] project.
-
-[workflowr]: https://github.com/jdblischak/workflowr
+Analysis of data of participants learning languages.
