@@ -77,7 +77,7 @@ graph_mean |>
 
 # Dynamic
 
-```{r plot-single, fig.width=8, fig.height=6}
+```{r prepare-data-mdl}
 data <- graphs |>
   mutate(
     Time = factor(Time),
@@ -91,6 +91,11 @@ data <- graphs |>
         summarise(mean_strength = mean(strength))
     )
   )
+mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
+```
+
+
+```{r plot-single, fig.width=8, fig.height=6}
 ggplot(data, aes(Time, mean_strength, color = type)) +
   geom_point(position = position_dodge(width = 0.2)) +
   geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
@@ -101,7 +106,6 @@ ggplot(data, aes(Time, mean_strength, color = type)) +
 ```
 
 ```{r plot-stats, fig.width=8, fig.height=6}
-mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
 emmeans(mdl_fitted, ~ Time * type) |>
   broom::tidy() |>
   ggplot(aes(
@@ -137,7 +141,7 @@ anova(mdl_fitted) |>
 
 ## Simple Effect of Response Type
 
-```{r simple-effect}
+```{r simple-effect-type}
 emmeans(mdl_fitted, ~ Time*type) |>
   contrast(method = "pairwise", simple = "type") |>
   broom::tidy() |>
@@ -145,6 +149,23 @@ emmeans(mdl_fitted, ~ Time*type) |>
   mutate(
     t = sprintf("t(%.0f) = %.2f", df, statistic),
     .before = p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt()
+```
+
+## Simple Effect of Response Time
+
+```{r simple-effect-time}
+emmeans(mdl_fitted, ~ Time*type) |>
+  contrast(method = "pairwise", simple = "Time") |>
+  broom::tidy() |>
+  select(-null.value, -estimate, -std.error) |>
+  mutate(
+    t = sprintf("t(%.0f) = %.2f", df, statistic),
+    .before = adj.p.value,
     .keep = "unused"
   ) |>
   rstatix::p_format() |>
