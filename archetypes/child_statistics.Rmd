@@ -1,0 +1,94 @@
+### {{type_name}}
+
+```{r mdl-{{context}}-{{type_name}}}
+data <- graphs |>
+  mutate(
+    Time = factor(Time),
+    type = factor(type, c("o", "w"), c("Oral", "Written")),
+    map_df(
+      graph,
+      ~ .x |>
+        activate(nodes) |>
+        mutate(strength = centrality_degree(weights = {{type_formula}})) |>
+        as_tibble() |>
+        summarise(mean_strength = mean(strength))
+    )
+  )
+mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
+```
+
+```{r plot-single-{{context}}-{{type_name}}, fig.width=8, fig.height=6}
+ggplot(data, aes(Time, mean_strength, color = type)) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
+  scale_color_brewer(palette = "Paired") +
+  facet_wrap(~ SID, labeller = "label_both") +
+  labs(y = "Mean Strength", color = "Response") +
+  ggpubr::theme_pubr()
+```
+
+```{r plot-stats-{{context}}-{{type_name}}, fig.width=8, fig.height=6}
+emmeans(mdl_fitted, ~ Time * type) |>
+  broom::tidy() |>
+  ggplot(aes(
+    Time, estimate,
+    ymin = estimate - std.error, ymax = estimate + std.error,
+    color = type
+  )) +
+  geom_point(position = position_dodge(width = 0.2)) +
+  geom_errorbar(width = 0, position = position_dodge(width = 0.2)) +
+  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
+  scale_color_brewer(palette = "Paired") +
+  labs(y = "Mean Strength", color = "Response") +
+  ggpubr::theme_pubr()
+```
+
+#### ANOVA Table
+
+```{r anova-{{context}}-{{type_name}}}
+anova(mdl_fitted) |>
+  broom::tidy() |>
+  mutate(
+    `F` = sprintf("F(%.0f, %.0f) = %.2f", NumDF, DenDF, statistic),
+    .before = p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt() |>
+  gt::fmt_number(ends_with("sq"))
+```
+
+#### Simple Effect of Response Type
+
+```{r simple-type-{{context}}-{{type_name}}}
+emmeans(mdl_fitted, ~ Time*type) |>
+  contrast(method = "pairwise", simple = "type") |>
+  broom::tidy() |>
+  select(-null.value, -estimate, -std.error) |>
+  mutate(
+    t = sprintf("t(%.0f) = %.2f", df, statistic),
+    .before = p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt()
+```
+
+#### Simple Effect of Response Time
+
+```{r simple-time-{{context}}-{{type_name}}}
+emmeans(mdl_fitted, ~ Time*type) |>
+  contrast(method = "pairwise", simple = "Time") |>
+  broom::tidy() |>
+  select(-null.value, -estimate, -std.error) |>
+  mutate(
+    t = sprintf("t(%.0f) = %.2f", df, statistic),
+    .before = adj.p.value,
+    .keep = "unused"
+  ) |>
+  rstatix::p_format() |>
+  rstatix::p_mark_significant() |>
+  gt::gt()
+```

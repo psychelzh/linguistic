@@ -2,14 +2,15 @@
 #'
 #' @title
 #' @param data_clean
-calc_distances <- function(data_clean) {
+#' @param method
+calc_distances <- function(data_clean, method) {
   data_clean |>
     group_by(type, SID, Time) |>
     group_modify(
       ~ .x |>
         select(-order) |>
         t() |>
-        vegan::vegdist("chisq") |>
+        vegan::vegdist(method) |>
         broom::tidy()
     ) |>
     ungroup()

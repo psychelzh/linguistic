@@ -1,5 +1,5 @@
 ---
-title: "Visualize Graphs"
+title: "Analyze Notes"
 author: "Liang Zhang"
 date: "2021-07-09"
 output:
@@ -21,12 +21,15 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
 ```{r load-data, include=FALSE}
-targets::tar_load(graphs)
-targets::tar_load(graph_mean)
+targets::tar_load(graphs_euc)
+targets::tar_load(mean_graphs_euc)
+targets::tar_load(graphs_chi)
+targets::tar_load(mean_graphs_chi)
 targets::tar_load(file_child_viz_graph)
+targets::tar_load(file_child_statistics)
 ```
 
-```{r common-funs}
+```{r common-funs-config}
 vis_graph <- function(g) {
   ggraph(g, layout = "igraph", algorithm = "circle") +
     geom_edge_link(aes(width = 1 / distance)) +
@@ -34,13 +37,20 @@ vis_graph <- function(g) {
     scale_edge_width(range = c(0.1, 2), guide = "none") +
     theme_graph()
 }
+weights_type <- set_names(
+  c("distance", "1 / distance"),
+  c("Use Original Distance", "Use the Reciprocal of Distance")
+)
 ```
 
-# Visualize
+# Using Euclidean Distance
+
+## Graph for Each subject
 
 Here we visualize the continuous graphs of each time point for each subject and each type of response form.
 
-```{r render-content}
+```{r}
+graphs <- graphs_euc
 src <- purrr::map_chr(
   sort(unique(graphs$SID)),
   ~ knitr::knit_expand(file_child_viz_graph, user = .x)
@@ -55,8 +65,8 @@ This is the mean of all graphs.
 
 ### Written Form
 
-```{r graph-mean-written, fig.width=12, fig.height=8}
-graph_mean |>
+```{r, fig.width=12, fig.height=8}
+mean_graphs_euc |>
   filter(type == "w") |>
   mutate(plot = map(graph, vis_graph)) |>
   pull(plot) |>
@@ -66,8 +76,8 @@ graph_mean |>
 
 ### Oral Form
 
-```{r graph-mean-oral, fig.width=12, fig.height=8}
-graph_mean |>
+```{r, fig.width=12, fig.height=8}
+mean_graphs_euc |>
   filter(type == "o") |>
   mutate(plot = map(graph, vis_graph)) |>
   pull(plot) |>
@@ -75,100 +85,76 @@ graph_mean |>
   plot_annotation(tag_levels = "1", tag_prefix = "Time: ")
 ```
 
-# Dynamic
+## Dynamic Graphs
 
-```{r prepare-data-mdl}
-data <- graphs |>
-  mutate(
-    Time = factor(Time),
-    type = factor(type, c("o", "w"), c("Oral", "Written")),
-    map_df(
-      graph,
-      ~ .x |>
-        activate(nodes) |>
-        mutate(strength = centrality_degree(weights = 1 / distance)) |>
-        as_tibble() |>
-        summarise(mean_strength = mean(strength))
-    )
+```{r}
+src <- purrr::imap_chr(
+  weights_type,
+  ~ knitr::knit_expand(
+    file_child_statistics, 
+    type_formula = .x,
+    type_name = .y,
+    context = "euc"
   )
-mdl_fitted <- lmer(mean_strength ~ Time * type + (1 | SID), data)
+)
 ```
 
+`r knitr::knit(text = str_c(src, collapse = "\n\n"))`
 
-```{r plot-single, fig.width=8, fig.height=6}
-ggplot(data, aes(Time, mean_strength, color = type)) +
-  geom_point(position = position_dodge(width = 0.2)) +
-  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
-  scale_color_brewer(palette = "Paired") +
-  facet_wrap(~ SID, labeller = "label_both") +
-  labs(y = "Mean Strength", color = "Response") +
-  ggpubr::theme_pubr()
+# Using Chisquare Distance
+
+## Graph for Each subject
+
+Here we visualize the continuous graphs of each time point for each subject and each type of response form.
+
+```{r}
+graphs <- graphs_chi
+src <- purrr::map_chr(
+  sort(unique(graphs$SID)),
+  ~ knitr::knit_expand(file_child_viz_graph, user = .x)
+)
 ```
 
-```{r plot-stats, fig.width=8, fig.height=6}
-emmeans(mdl_fitted, ~ Time * type) |>
-  broom::tidy() |>
-  ggplot(aes(
-    Time, estimate,
-    ymin = estimate - std.error, ymax = estimate + std.error,
-    color = type
-  )) +
-  geom_point(position = position_dodge(width = 0.2)) +
-  geom_errorbar(width = 0, position = position_dodge(width = 0.2)) +
-  geom_line(aes(group = type), position = position_dodge(width = 0.2)) +
-  scale_color_brewer(palette = "Paired") +
-  labs(y = "Mean Strength", color = "Response") +
-  ggpubr::theme_pubr()
+`r knitr::knit(text = str_c(src, collapse = "\n\n"))`
+
+## Averaged Graph
+
+This is the mean of all graphs.
+
+### Written Form
+
+```{r, fig.width=12, fig.height=8}
+mean_graphs_chi |>
+  filter(type == "w") |>
+  mutate(plot = map(graph, vis_graph)) |>
+  pull(plot) |>
+  wrap_plots() +
+  plot_annotation(tag_levels = "1", tag_prefix = "Time: ")
 ```
 
-# Statistical Results
+### Oral Form
 
-## ANOVA Table
-
-```{r anova}
-anova(mdl_fitted) |>
-  broom::tidy() |>
-  mutate(
-    `F` = sprintf("F(%.0f, %.0f) = %.2f", NumDF, DenDF, statistic),
-    .before = p.value,
-    .keep = "unused"
-  ) |>
-  rstatix::p_format() |>
-  rstatix::p_mark_significant() |>
-  gt::gt() |>
-  gt::fmt_number(ends_with("sq"))
+```{r, fig.width=12, fig.height=8}
+mean_graphs_chi |>
+  filter(type == "o") |>
+  mutate(plot = map(graph, vis_graph)) |>
+  pull(plot) |>
+  wrap_plots() +
+  plot_annotation(tag_levels = "1", tag_prefix = "Time: ")
 ```
 
-## Simple Effect of Response Type
+## Dynamic Graphs
 
-```{r simple-effect-type}
-emmeans(mdl_fitted, ~ Time*type) |>
-  contrast(method = "pairwise", simple = "type") |>
-  broom::tidy() |>
-  select(-null.value, -estimate, -std.error) |>
-  mutate(
-    t = sprintf("t(%.0f) = %.2f", df, statistic),
-    .before = p.value,
-    .keep = "unused"
-  ) |>
-  rstatix::p_format() |>
-  rstatix::p_mark_significant() |>
-  gt::gt()
+```{r}
+src <- purrr::imap_chr(
+  weights_type,
+  ~ knitr::knit_expand(
+    file_child_statistics, 
+    type_formula = .x,
+    type_name = .y,
+    context = "chi"
+  )
+)
 ```
 
-## Simple Effect of Response Time
-
-```{r simple-effect-time}
-emmeans(mdl_fitted, ~ Time*type) |>
-  contrast(method = "pairwise", simple = "Time") |>
-  broom::tidy() |>
-  select(-null.value, -estimate, -std.error) |>
-  mutate(
-    t = sprintf("t(%.0f) = %.2f", df, statistic),
-    .before = adj.p.value,
-    .keep = "unused"
-  ) |>
-  rstatix::p_format() |>
-  rstatix::p_mark_significant() |>
-  gt::gt()
-```
+`r knitr::knit(text = str_c(src, collapse = "\n\n"))`
